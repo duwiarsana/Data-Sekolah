@@ -1,0 +1,26 @@
+{
+  "name": "data-sekolah",
+  "version": "1.0.0",
+  "description": "Aplikasi Data Sekolah Indonesia",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "build:css": "tailwindcss -i ./input.css -o ./output.css",
+    "watch:css": "tailwindcss -i ./input.css -o ./output.css --watch"
+  },
+  "dependencies": {
+    "axios": "^0.21.1",
+    "cors": "^2.8.5",
+    "dotenv": "^10.0.0",
+    "express": "^4.17.1",
+    "pg": "^8.7.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^4.1.6"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

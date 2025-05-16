@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peta Data Sekolah Indonesia</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+    tailwind.config = {
+      content: [
+        './index.html',
+        './filter.js'
+      ]
+    }
+    </script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  max-width: 100vw;
+  overflow: hidden;
+}
+        .sidebar {
+            width: 280px;
+            background: #f8f9fa;
+            padding: 24px 18px;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.04);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+        .sidebar h2 { margin: 0 0 10px 0; color: #2a3d66; }
+        .sidebar label { font-size: 1.1em; }
+        #map {
+  flex: 1;
+  height: 100vh;
+  min-width: 0;
+  min-height: 400px;
+}
+        .container { min-height: 400px; }
+        #updateDataBtn {
+          width: auto;
+          max-width: 300px;
+          display: inline-block;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="sidebar">
+        <h2>Filter Data</h2>
+
+        <div style="margin-top:10px;">
+            <label for="provinsiSelect"><b>Pilih Provinsi</b></label><br>
+            <select id="provinsiSelect" style="width:100%;padding:5px 4px;margin-top:4px;">
+                <option value="">-- Pilih Provinsi --</option>
+            </select>
+        </div>
+        <div style="margin-top:10px;">
+            <label for="kabupatenSelect"><b>Pilih Kabupaten/Kota</b></label><br>
+            <select id="kabupatenSelect" style="width:100%;padding:5px 4px;margin-top:4px;" disabled>
+                <option value="">-- Pilih Kabupaten/Kota --</option>
+            </select>
+        </div>
+        <div style="margin-top:16px;margin-bottom:10px;">
+            <label style="font-weight:bold;">Pilih Jenjang:</label><br>
+            <label><input type="checkbox" class="jenjangCheck" value="sd"> SD</label>
+            <label><input type="checkbox" class="jenjangCheck" value="smp"> SMP</label>
+            <label><input type="checkbox" class="jenjangCheck" value="sma"> SMA</label>
+            <label><input type="checkbox" class="jenjangCheck" value="smk"> SMK</label>
+        </div>
+        <button id="tampilDataBtn" style="margin-top:8px;padding:10px 24px;background:#2a3d66;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:1.1em;">Tampil Data</button>
+        
+        <div id="updateStatusSidebar" class="mt-4 text-center"></div>
+        <button id="updateDataBtn" class="w-full mt-2 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-300">
+            Update Data Sekolah
+        </button>
+        <!-- Filter tambahan dapat diletakkan di sini -->
+    </div>
+    <div id="map"></div>
+</div>
+<div id="school-list" style="max-width:700px;margin:24px auto 0 auto;"></div>
+<div id="pagination" style="max-width:700px;margin:8px auto 0 auto;text-align:center;"></div>
+<!-- Modal detail sekolah -->
+<div id="modal-detail" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
+    <div id="modal-content" style="background:#fff;padding:28px 24px 18px 24px;border-radius:10px;max-width:380px;width:92vw;box-shadow:0 8px 32px rgba(0,0,0,0.15);position:relative;">
+        <button onclick="closeModal()" style="position:absolute;top:8px;right:12px;font-size:1.5em;background:none;border:none;cursor:pointer;">&times;</button>
+        <div id="modal-body"></div>
+    </div>
+</div>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+
+
+<script src="filter.js"></script>
+<script>
+    // Inisialisasi peta
+    const map = L.map('map').setView([-2.5489, 118.0149], 5); // Koordinat Indonesia tengah
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Tidak ada data dummy atau marker sekolah untuk saat ini
+    // Batasi zoom out hanya pada wilayah Indonesia
+    var indonesiaBounds = L.latLngBounds(
+        L.latLng(-11.2, 94.9), // Southwest (sekitar Pulau Rote, barat Sumatra)
+        L.latLng(6.2, 141.0)   // Northeast (utara Aceh, timur Papua)
+    );
+    map.setMaxBounds(indonesiaBounds);
+    map.on('drag', function() {
+        map.panInsideBounds(indonesiaBounds, { animate: false });
+    });
+    map.setMinZoom(5); // Zoom minimum Indonesia
+    map.setMaxZoom(18); // Zoom maksimum detail
+
+    // Marker cluster group
+    let markerCluster = L.markerClusterGroup();
+    let schoolMarkers = [];
+    map.addLayer(markerCluster);
+
+    async function fetchAndShowSchools(filterProvinsi = '', filterKabupaten = '', jenjangArr = null) {
+        // Tambahkan log untuk debugging
+        console.log('Fetching schools with params:', {
+            filterProvinsi,
+            filterKabupaten,
+            jenjangArr
+        });
+        // Loading indicator
+        document.getElementById('school-list').innerHTML = '<div style="text-align:center;padding:20px;">Memuat seluruh data sekolah...</div>';
+        let allSchools = [];
+        const perPage = 100;
+        try {
+            if (Array.isArray(jenjangArr) && jenjangArr.length > 0) {
+                // Fetch paralel untuk tiap jenjang
+                let fetchPromises = jenjangArr.map(async (jenjang) => {
+                    let page = 1;
+                    let isLastPage = false;
+                    let result = [];
+                    while (!isLastPage) {
+                        // Pastikan parameter kab_kota selalu digunakan jika ada
+                        // Jika kabupaten/kota dipilih, prioritaskan filter kabupaten/kota
+                        let url = '';
+                        if (filterKabupaten) {
+                            // Filter hanya berdasarkan kabupaten/kota
+                            url = `https://api-sekolah-indonesia.vercel.app/sekolah/${jenjang}?kab_kota=${encodeURIComponent(filterKabupaten)}`;
+                        } else {
+                            // Jika tidak ada kabupaten/kota, filter berdasarkan provinsi
+                            url = `https://api-sekolah-indonesia.vercel.app/sekolah/${jenjang}?provinsi=${filterProvinsi}`;
+                        }
+                        // Tambahkan parameter page dan perPage setelah filter
+                        url += `&page=${page}&perPage=${perPage}`;
+                        console.log('Fetch URL:', url);
+                        const res = await fetch(url);
+                        const json = await res.json();
+                        console.log('API Response:', json);
+                        console.log('Full API Response:', json);
+                        const schools = json.dataSekolah || json;
+                        console.log('Filtered Schools:', schools);
+                        console.log('Schools Length:', schools.length);
+                        result = result.concat(schools);
+                        if (schools.length < perPage) {
+                            isLastPage = true;
+                        } else {
+                            page++;
+                        }
+                    }
+                    return result;
+                });
+                const allResults = await Promise.all(fetchPromises);
+                allSchools = allResults.flat();
+            } else {
+                // Tanpa filter jenjang (endpoint lama)
+                let page = 1;
+                let isLastPage = false;
+                while (!isLastPage) {
+                    // Pastikan parameter kab_kota selalu digunakan jika ada
+                    // Jika kabupaten/kota dipilih, prioritaskan filter kabupaten/kota
+                    let url = '';
+                    if (filterKabupaten) {
+                        // Filter hanya berdasarkan kabupaten/kota
+                        url = `https://api-sekolah-indonesia.vercel.app/sekolah?kab_kota=${encodeURIComponent(filterKabupaten)}`;
+                    } else {
+                        // Jika tidak ada kabupaten/kota, filter berdasarkan provinsi
+                        url = `https://api-sekolah-indonesia.vercel.app/sekolah?provinsi=${filterProvinsi}`;
+                    }
+                    // Tambahkan parameter page dan perPage setelah filter
+                    url += `&page=${page}&perPage=${perPage}`;
+                    console.log('Fetch URL (no jenjang):', url);
+                    const res = await fetch(url);
+                    const json = await res.json();
+                    console.log('API Response (no jenjang):', json);
+                    console.log('Full API Response (no jenjang):', json);
+                    const schools = json.dataSekolah || json;
+                    console.log('Filtered Schools (no jenjang):', schools);
+                    console.log('Schools Length (no jenjang):', schools.length);
+                    allSchools = allSchools.concat(schools);
+                    if (schools.length < perPage) {
+                        isLastPage = true;
+                    } else {
+                        page++;
+                    }
+                }
+            }
+            // Clear marker sebelumnya
+            markerCluster.clearLayers();
+            schoolMarkers = [];
+
+            // Tambahkan marker baru
+            allSchools.forEach((school) => {
+                const lat = parseFloat(school.lintang);
+                const lng = parseFloat(school.bujur);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    const marker = L.marker([lat, lng])
+                        .bindPopup(`<b>${school.sekolah || school.nama}</b><br>${school.alamat_jalan || ''}`);
+                    markerCluster.addLayer(marker);
+                    schoolMarkers.push(marker);
+                }
+            });
+            map.addLayer(markerCluster);
+            // Tampilkan node data sekolah di bawah peta
+            const listDiv = document.getElementById('school-list');
+            let title = `Daftar Seluruh Sekolah di Provinsi: <span style='color:#2a3d66;'>${document.getElementById('provinsiSelect').selectedOptions[0].text}</span>`;
+            let html = `<h3>${title} <span style='font-size:13px;color:#888;'>(Total: ${allSchools.length})</span></h3>`;
+            html += '<ul style="padding-left:16px">';
+            allSchools.forEach((school, idx) => {
+                html += `<li style='margin-bottom:8px;cursor:pointer;' onclick='showSchoolDetailModal(${JSON.stringify(school).replace(/'/g, "&#39;")})'>
+                    <b>${school.sekolah || school.nama}</b><br>
+                    ${school.alamat_jalan || '-'}<br>
+                    Koordinat: ${school.lintang}, ${school.bujur}
+                </li>`;
+            });
+            html += '</ul>';
+            listDiv.innerHTML = html;
+        } catch (err) {
+            alert('Gagal mengambil data sekolah.');
+        }
+    }
+    // Dropdown provinsi event
+    document.getElementById('provinsiSelect').addEventListener('change', function(e) {
+        // Saat provinsi berubah, enable dropdown kabupaten jika ada value
+        const kabupatenSelect = document.getElementById('kabupatenSelect');
+        if (this.value) {
+            kabupatenSelect.disabled = false;
+        } else {
+            kabupatenSelect.value = '';
+            kabupatenSelect.disabled = true;
+        }
+    });
+
+    // Dropdown kabupaten event
+    document.getElementById('kabupatenSelect').addEventListener('change', function(e) {
+        // Tidak fetch data, hanya update value
+    });
+
+    // Tombol tampil data
+    document.getElementById('tampilDataBtn').onclick = async function() {
+        const provinsiSelect = document.getElementById('provinsiSelect');
+        const kabupatenSelect = document.getElementById('kabupatenSelect');
+        const jenjangArr = Array.from(document.querySelectorAll('.jenjangCheck:checked')).map((el) => el.value);
+        await fetchAndShowSchools(
+            provinsiSelect.value,      // Kode Provinsi
+            kabupatenSelect.value,     // Kode Kabupaten (bisa kosong)
+            jenjangArr.length > 0 ? jenjangArr : ['sd','smp','sma','smk']  // Array Jenjang
+        );
+    };
+
+    document.getElementById('updateDataBtn').onclick = async function() {
+  const updateStatus = document.getElementById('updateStatusSidebar');
+  updateStatus.innerHTML = '<span class="text-blue-600 font-medium animate-pulse">Memulai update data...</span>';
+  try {
+    const response = await fetch('/update-data');
+    const result = await response.json();
+    updateStatus.innerHTML = `<div class="bg-green-100 border border-green-400 text-green-700 px-2 py-2 rounded text-sm" role="alert">
+      <strong>Berhasil!</strong>
+      <span class="block">${result.message}</span>
+    </div>`;
+  } catch (error) {
+    updateStatus.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-2 py-2 rounded text-sm" role="alert">
+      <strong>Gagal!</strong>
+      <span class="block">Gagal memulai update: ${error.message}</span>
+    </div>`;
+  }
+};
+
+    // Modal logic
+    function showSchoolDetailModal(school) {
+        let html = `<h2 style='margin-top:0'>${school.sekolah || school.nama}</h2>`;
+        html += `<div style='margin-bottom:10px;'>${school.alamat_jalan || '-'}</div>`;
+        html += `<table style='width:100%;font-size:0.97em;'>`;
+        html += `<tr><td><b>NPSN</b></td><td>${school.npsn || '-'}</td></tr>`;
+        html += `<tr><td><b>Bentuk</b></td><td>${school.bentuk || '-'}</td></tr>`;
+        html += `<tr><td><b>Status</b></td><td>${school.status || '-'}</td></tr>`;
+        html += `<tr><td><b>Provinsi</b></td><td>${school.propinsi || '-'}</td></tr>`;
+        html += `<tr><td><b>Kabupaten/Kota</b></td><td>${school.kabupaten_kota || '-'}</td></tr>`;
+        html += `<tr><td><b>Kecamatan</b></td><td>${school.kecamatan || '-'}</td></tr>`;
+        html += `<tr><td><b>Koordinat</b></td><td>${school.lintang}, ${school.bujur}</td></tr>`;
+        html += `</table>`;
+        document.getElementById('modal-body').innerHTML = html;
+        document.getElementById('modal-detail').style.display = 'flex';
+    html += `<tr><td><b>Bentuk</b></td><td>${school.bentuk || '-'}</td></tr>`;
+    html += `<tr><td><b>Status</b></td><td>${school.status || '-'}</td></tr>`;
+    html += `<tr><td><b>Provinsi</b></td><td>${school.propinsi || '-'}</td></tr>`;
+    html += `<tr><td><b>Kabupaten/Kota</b></td><td>${school.kabupaten_kota || '-'}</td></tr>`;
+    html += `<tr><td><b>Kecamatan</b></td><td>${school.kecamatan || '-'}</td></tr>`;
+    html += `<tr><td><b>Koordinat</b></td><td>${school.lintang}, ${school.bujur}</td></tr>`;
+    html += `</table>`;
+    document.getElementById('modal-body').innerHTML = html;
+    document.getElementById('modal-detail').style.display = 'flex';
+}
+function closeModal() {
+    document.getElementById('modal-detail').style.display = 'none';
+}
+// Tutup modal jika klik area luar konten
+window.onclick = function(event) {
+    const modal = document.getElementById('modal-detail');
+    if (event.target === modal) {
+        closeModal();
+    }
+}
+</script>
+</body>
+</html>

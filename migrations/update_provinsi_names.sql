@@ -1,0 +1,24 @@
+-- Update nama provinsi
+UPDATE provinsi SET nama = 'Prov. Lampung' WHERE kode = '120000';
+UPDATE provinsi SET nama = 'Prov. Kalimantan Barat' WHERE kode = '130000';
+UPDATE provinsi SET nama = 'Prov. Kalimantan Tengah' WHERE kode = '140000';
+UPDATE provinsi SET nama = 'Prov. Kalimantan Selatan' WHERE kode = '150000';
+UPDATE provinsi SET nama = 'Prov. Kalimantan Timur' WHERE kode = '160000';
+UPDATE provinsi SET nama = 'Prov. Sulawesi Utara' WHERE kode = '170000';
+UPDATE provinsi SET nama = 'Prov. Sulawesi Tengah' WHERE kode = '180000';
+UPDATE provinsi SET nama = 'Prov. Sulawesi Selatan' WHERE kode = '190000';
+UPDATE provinsi SET nama = 'Prov. Sulawesi Tenggara' WHERE kode = '200000';
+UPDATE provinsi SET nama = 'Prov. Maluku' WHERE kode = '210000';
+UPDATE provinsi SET nama = 'Prov. Bali' WHERE kode = '220000';
+UPDATE provinsi SET nama = 'Prov. Nusa Tenggara Barat' WHERE kode = '230000';
+UPDATE provinsi SET nama = 'Prov. Nusa Tenggara Timur' WHERE kode = '240000';
+UPDATE provinsi SET nama = 'Prov. Papua' WHERE kode = '250000';
+UPDATE provinsi SET nama = 'Prov. Bengkulu' WHERE kode = '260000';
+UPDATE provinsi SET nama = 'Prov. Maluku Utara' WHERE kode = '270000';
+UPDATE provinsi SET nama = 'Prov. Banten' WHERE kode = '280000';
+UPDATE provinsi SET nama = 'Prov. Kepulauan Bangka Belitung' WHERE kode = '290000';
+UPDATE provinsi SET nama = 'Prov. Gorontalo' WHERE kode = '300000';
+UPDATE provinsi SET nama = 'Prov. Kepulauan Riau' WHERE kode = '310000';
+UPDATE provinsi SET nama = 'Prov. Papua Barat' WHERE kode = '320000';
+UPDATE provinsi SET nama = 'Prov. Sulawesi Barat' WHERE kode = '330000';
+UPDATE provinsi SET nama = 'Prov. Kalimantan Utara' WHERE kode = '340000';
