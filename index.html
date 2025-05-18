@@ -17,75 +17,164 @@
     }
     </script>
     <style>
-        body { margin: 0; font-family: Arial, sans-serif; }
-        .container {
-  display: flex;
-  height: 100vh;
-  width: 100vw;
-  max-width: 100vw;
-  overflow: hidden;
-}
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            position: relative;
+        }
+
         .sidebar {
-            width: 280px;
+            width: 270px;
             background: #f8f9fa;
-            padding: 24px 18px;
+            padding: 32px 20px 32px 20px;
             box-shadow: 2px 0 8px rgba(0,0,0,0.04);
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 15px;
+            box-sizing: border-box;
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            z-index: 3;
+            border-radius: 16px;
+            transition: all 0.3s ease;
+            transform: translateX(0);
+            opacity: 1;
+            max-height: 480px;
+            overflow-y: auto;
         }
-        .sidebar h2 { margin: 0 0 10px 0; color: #2a3d66; }
-        .sidebar label { font-size: 1.1em; }
+
+        .sidebar:hover {
+            transform: translateX(10px);
+            box-shadow: 4px 0 12px rgba(0,0,0,0.1);
+        }
+
+        .sidebar select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 5px;
+            width: 100%;
+        }
+
+        .sidebar label {
+            font-weight: 600;
+            color: #333;
+            margin: 5px 0;
+        }
+
+        .sidebar button {
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            background: #2a3d66;
+            color: white;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            margin-top: 20px;
+            margin-bottom: 0;
+        }
+
+        .sidebar button:hover {
+            background: #1a2d56;
+        }
+
+        .sidebar h2 {
+            margin: 0 0 10px 0;
+            color: #2a3d66;
+        }
+
+        .sidebar label {
+            font-size: 1.1em;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
         #map {
-  flex: 1;
-  height: 100vh;
-  min-width: 0;
-  min-height: 400px;
-}
-        .container { min-height: 400px; }
-        #updateDataBtn {
-          width: auto;
-          max-width: 300px;
-          display: inline-block;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+            background: #000;
+        }
+
+        #school-list {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            max-width: 700px;
+            z-index: 2;
+            padding: 20px;
+        }
+
+        #pagination {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            max-width: 700px;
+            z-index: 2;
+            padding: 10px;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="sidebar">
-        <h2>Filter Data</h2>
-
-        <div style="margin-top:10px;">
-            <label for="provinsiSelect"><b>Pilih Provinsi</b></label><br>
-            <select id="provinsiSelect" style="width:100%;padding:5px 4px;margin-top:4px;">
-                <option value="">-- Pilih Provinsi --</option>
-            </select>
+    <div id="app">
+        <div class="sidebar" style="position: fixed; left: 20px; top: 20px; bottom: 20px; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div>
+                    <label for="provinsiSelect"><b>Pilih Provinsi</b></label><br>
+                    <select id="provinsiSelect" style="width:100%;padding:5px 4px;margin-top:4px;">
+                        <option value="">-- Pilih Provinsi --</option>
+                    </select>
+                </div>
+                <div style="margin-top:10px;">
+                    <label for="kabupatenSelect"><b>Pilih Kabupaten/Kota</b></label><br>
+                    <select id="kabupatenSelect" style="width:100%;padding:5px 4px;margin-top:4px;" disabled>
+                        <option value="">-- Pilih Kabupaten/Kota --</option>
+                    </select>
+                </div>
+                <div style="margin-top:16px;margin-bottom:10px;">
+                    <label style="font-weight:bold;">Pilih Jenjang:</label><br>
+                    <label><input type="checkbox" class="jenjangCheck" value="sd"> SD</label>
+                    <label><input type="checkbox" class="jenjangCheck" value="smp"> SMP</label>
+                    <label><input type="checkbox" class="jenjangCheck" value="sma"> SMA</label>
+                    <label><input type="checkbox" class="jenjangCheck" value="smk"> SMK</label>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
+                    <button id="tampilDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Tampil Data</button>
+                    <button id="updateDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Update Data Sekolah</button>
+                </div>
+                <div id="updateStatusSidebar" class="mt-2 text-center"></div>
+            </div>
         </div>
-        <div style="margin-top:10px;">
-            <label for="kabupatenSelect"><b>Pilih Kabupaten/Kota</b></label><br>
-            <select id="kabupatenSelect" style="width:100%;padding:5px 4px;margin-top:4px;" disabled>
-                <option value="">-- Pilih Kabupaten/Kota --</option>
-            </select>
+        <div class="map-container">
+            <div id="map"></div>
         </div>
-        <div style="margin-top:16px;margin-bottom:10px;">
-            <label style="font-weight:bold;">Pilih Jenjang:</label><br>
-            <label><input type="checkbox" class="jenjangCheck" value="sd"> SD</label>
-            <label><input type="checkbox" class="jenjangCheck" value="smp"> SMP</label>
-            <label><input type="checkbox" class="jenjangCheck" value="sma"> SMA</label>
-            <label><input type="checkbox" class="jenjangCheck" value="smk"> SMK</label>
-        </div>
-        <button id="tampilDataBtn" style="margin-top:8px;padding:10px 24px;background:#2a3d66;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:1.1em;">Tampil Data</button>
-        
-        <div id="updateStatusSidebar" class="mt-4 text-center"></div>
-        <button id="updateDataBtn" class="w-full mt-2 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition duration-300">
-            Update Data Sekolah
-        </button>
-        <!-- Filter tambahan dapat diletakkan di sini -->
     </div>
-    <div id="map"></div>
-</div>
-<div id="school-list" style="max-width:700px;margin:24px auto 0 auto;"></div>
-<div id="pagination" style="max-width:700px;margin:8px auto 0 auto;text-align:center;"></div>
+
 <!-- Modal detail sekolah -->
 <div id="modal-detail" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100vw;height:100vh;background:rgba(0,0,0,0.3);align-items:center;justify-content:center;">
     <div id="modal-content" style="background:#fff;padding:28px 24px 18px 24px;border-radius:10px;max-width:380px;width:92vw;box-shadow:0 8px 32px rgba(0,0,0,0.15);position:relative;">
@@ -101,7 +190,9 @@
 <script src="filter.js"></script>
 <script>
     // Inisialisasi peta
-    const map = L.map('map').setView([-2.5489, 118.0149], 5); // Koordinat Indonesia tengah
+    const map = L.map('map', {
+        zoomControl: false // Menonaktifkan kontrol zoom
+    }).setView([-2.5489, 118.0149], 5); // Koordinat Indonesia tengah
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
@@ -126,121 +217,42 @@
 
     async function fetchAndShowSchools(filterProvinsi = '', filterKabupaten = '', jenjangArr = null) {
         // Tambahkan log untuk debugging
-        console.log('Fetching schools with params:', {
+        console.log('Fetching schools from database with params:', {
             filterProvinsi,
             filterKabupaten,
             jenjangArr
         });
-        // Loading indicator
-        document.getElementById('school-list').innerHTML = '<div style="text-align:center;padding:20px;">Memuat seluruh data sekolah...</div>';
-        let allSchools = [];
-        const perPage = 100;
+        
         try {
-            if (Array.isArray(jenjangArr) && jenjangArr.length > 0) {
-                // Fetch paralel untuk tiap jenjang
-                let fetchPromises = jenjangArr.map(async (jenjang) => {
-                    let page = 1;
-                    let isLastPage = false;
-                    let result = [];
-                    while (!isLastPage) {
-                        // Pastikan parameter kab_kota selalu digunakan jika ada
-                        // Jika kabupaten/kota dipilih, prioritaskan filter kabupaten/kota
-                        let url = '';
-                        if (filterKabupaten) {
-                            // Filter hanya berdasarkan kabupaten/kota
-                            url = `https://api-sekolah-indonesia.vercel.app/sekolah/${jenjang}?kab_kota=${encodeURIComponent(filterKabupaten)}`;
-                        } else {
-                            // Jika tidak ada kabupaten/kota, filter berdasarkan provinsi
-                            url = `https://api-sekolah-indonesia.vercel.app/sekolah/${jenjang}?provinsi=${filterProvinsi}`;
-                        }
-                        // Tambahkan parameter page dan perPage setelah filter
-                        url += `&page=${page}&perPage=${perPage}`;
-                        console.log('Fetch URL:', url);
-                        const res = await fetch(url);
-                        const json = await res.json();
-                        console.log('API Response:', json);
-                        console.log('Full API Response:', json);
-                        const schools = json.dataSekolah || json;
-                        console.log('Filtered Schools:', schools);
-                        console.log('Schools Length:', schools.length);
-                        result = result.concat(schools);
-                        if (schools.length < perPage) {
-                            isLastPage = true;
-                        } else {
-                            page++;
-                        }
-                    }
-                    return result;
-                });
-                const allResults = await Promise.all(fetchPromises);
-                allSchools = allResults.flat();
-            } else {
-                // Tanpa filter jenjang (endpoint lama)
-                let page = 1;
-                let isLastPage = false;
-                while (!isLastPage) {
-                    // Pastikan parameter kab_kota selalu digunakan jika ada
-                    // Jika kabupaten/kota dipilih, prioritaskan filter kabupaten/kota
-                    let url = '';
-                    if (filterKabupaten) {
-                        // Filter hanya berdasarkan kabupaten/kota
-                        url = `https://api-sekolah-indonesia.vercel.app/sekolah?kab_kota=${encodeURIComponent(filterKabupaten)}`;
-                    } else {
-                        // Jika tidak ada kabupaten/kota, filter berdasarkan provinsi
-                        url = `https://api-sekolah-indonesia.vercel.app/sekolah?provinsi=${filterProvinsi}`;
-                    }
-                    // Tambahkan parameter page dan perPage setelah filter
-                    url += `&page=${page}&perPage=${perPage}`;
-                    console.log('Fetch URL (no jenjang):', url);
-                    const res = await fetch(url);
-                    const json = await res.json();
-                    console.log('API Response (no jenjang):', json);
-                    console.log('Full API Response (no jenjang):', json);
-                    const schools = json.dataSekolah || json;
-                    console.log('Filtered Schools (no jenjang):', schools);
-                    console.log('Schools Length (no jenjang):', schools.length);
-                    allSchools = allSchools.concat(schools);
-                    if (schools.length < perPage) {
-                        isLastPage = true;
-                    } else {
-                        page++;
-                    }
-                }
-            }
+            // Fetch data dari database
+            const response = await fetch(`/api/sekolah?jenjang=${jenjangArr?.join(',')}&provinsi=${filterProvinsi}&kabupaten=${filterKabupaten}`);
+            const data = await response.json();
+            
             // Clear marker sebelumnya
             markerCluster.clearLayers();
             schoolMarkers = [];
-
-            // Tambahkan marker baru
-            allSchools.forEach((school) => {
-                const lat = parseFloat(school.lintang);
-                const lng = parseFloat(school.bujur);
+            
+            // Tambahkan marker untuk setiap sekolah
+            data.forEach((school) => {
+                const lat = parseFloat(school.latitude);
+                const lng = parseFloat(school.longitude);
                 if (!isNaN(lat) && !isNaN(lng)) {
                     const marker = L.marker([lat, lng])
-                        .bindPopup(`<b>${school.sekolah || school.nama}</b><br>${school.alamat_jalan || ''}`);
+                        .bindPopup(`<b>${school.nama}</b><br>${school.alamat}`);
                     markerCluster.addLayer(marker);
                     schoolMarkers.push(marker);
                 }
             });
-            map.addLayer(markerCluster);
-            // Tampilkan node data sekolah di bawah peta
-            const listDiv = document.getElementById('school-list');
-            let title = `Daftar Seluruh Sekolah di Provinsi: <span style='color:#2a3d66;'>${document.getElementById('provinsiSelect').selectedOptions[0].text}</span>`;
-            let html = `<h3>${title} <span style='font-size:13px;color:#888;'>(Total: ${allSchools.length})</span></h3>`;
-            html += '<ul style="padding-left:16px">';
-            allSchools.forEach((school, idx) => {
-                html += `<li style='margin-bottom:8px;cursor:pointer;' onclick='showSchoolDetailModal(${JSON.stringify(school).replace(/'/g, "&#39;")})'>
-                    <b>${school.sekolah || school.nama}</b><br>
-                    ${school.alamat_jalan || '-'}<br>
-                    Koordinat: ${school.lintang}, ${school.bujur}
-                </li>`;
-            });
-            html += '</ul>';
-            listDiv.innerHTML = html;
+            
+            // Perbarui jumlah sekolah yang ditampilkan
+            document.getElementById('school-list').innerHTML = '<div style="text-align:center;padding:20px;">Menampilkan ' + data.length + ' sekolah dari database</div>';
+            
         } catch (err) {
-            alert('Gagal mengambil data sekolah.');
-        }
+            console.error('Error fetching data from database:', err);
+            alert('Gagal mengambil data sekolah dari database.');
+        }    
     }
+
     // Dropdown provinsi event
     document.getElementById('provinsiSelect').addEventListener('change', function(e) {
         // Saat provinsi berubah, enable dropdown kabupaten jika ada value

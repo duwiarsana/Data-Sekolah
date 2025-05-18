@@ -21,7 +21,7 @@ window.addEventListener('DOMContentLoaded', async function() {
     }
     // Fetch kabupaten berdasarkan provinsi
     // Perbaiki fetchKabupaten agar selalu cek array
-async function fetchKabupaten(provKode) {
+    async function fetchKabupaten(provKode) {
         try {
             const response = await fetch(`/api/kabupaten?provinsi=${provKode}`);
             const data = await response.json();

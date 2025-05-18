@@ -154,30 +154,43 @@ app.post('/api/update-data', async (req, res) => {
 
 // Endpoint untuk mendapatkan data sekolah
 app.get('/api/sekolah', async (req, res) => {
-    const { jenjang, provinsi, kabupaten } = req.query;
-    let query = 'SELECT * FROM sekolah WHERE 1=1';
-    const params = [];
-
-    if (jenjang) {
-        query += ' AND jenjang = $' + (params.length + 1);
-        params.push(jenjang.toUpperCase());
-    }
-
-    if (provinsi) {
-        query += ' AND kode_provinsi = $' + (params.length + 1);
-        params.push(provinsi);
-    }
-
-    if (kabupaten) {
-        query += ' AND kode_kabupaten = $' + (params.length + 1);
-        params.push(kabupaten);
-    }
-
     try {
-        const result = await queryDatabase(query, params);
-        res.json(result);
+        const { jenjang, provinsi, kabupaten } = req.query;
+        let query = 'SELECT * FROM sekolah WHERE 1=1';
+        const params = [];
+        
+        if (jenjang) {
+            query += ' AND jenjang = ANY($1)';
+            params.push(jenjang.split(','));
+        }
+        
+        if (provinsi) {
+            query += ' AND kode_provinsi = $' + (params.length + 1);
+            params.push(provinsi);
+        }
+        
+        if (kabupaten) {
+            query += ' AND kode_kabupaten = $' + (params.length + 1);
+            params.push(kabupaten);
+        }
+        
+        query += ' ORDER BY nama';
+        
+        const result = await pool.query(query, params);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching sekolah:', err);
+        res.status(500).json({ error: 'Error fetching sekolah data' });
+    }
+});
+
+// Endpoint untuk menampilkan satu data sekolah secara acak
+app.get('/api/sekolah/random', async (req, res) => {
+    try {
+        const result = await queryDatabase('SELECT * FROM sekolah ORDER BY RANDOM() LIMIT 1');
+        res.json(result[0] || { message: 'Tidak ada data sekolah' });
     } catch (error) {
-        console.error('Error fetching sekolah:', error);
+        console.error('Error fetching random sekolah:', error);
         res.status(500).json({ error: 'Gagal mengambil data sekolah' });
     }
 });
