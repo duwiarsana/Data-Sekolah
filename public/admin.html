@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Data Sekolah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        .sidebar { 
+            min-height: calc(100vh - 4rem);
+            transition: all 0.3s ease;
+        }
+        .content { 
+            min-height: calc(100vh - 4rem);
+            transition: all 0.3s ease;
+        }
+        .nav-item {
+            transition: all 0.2s ease;
+            border-left: 4px solid transparent;
+        }
+        .nav-item.active {
+            background-color: #e2e8f0;
+            border-left: 4px solid #3b82f6;
+        }
+        .nav-item:hover { 
+            background-color: #f1f5f9;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Fix for modal scroll on mobile */
+        @media (max-width: 640px) {
+            .modal-content {
+                max-height: 90vh;
+                margin: 1rem;
+            }
+        }
+    </style>
+    <style>
+        .sidebar { min-height: calc(100vh - 4rem); }
+        .content { min-height: calc(100vh - 4rem); }
+        .nav-item.active {
+            background-color: #e2e8f0;
+            border-left: 4px solid #3b82f6;
+        }
+        .nav-item:hover { background-color: #f1f5f9; }
+        
+        /* Loading overlay */
+        .loading-overlay {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background-color: white;
+            padding: 0.75rem 1.25rem;
+            border-radius: 0.375rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            z-index: 50;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        /* Filter styles */
+        .filter-section {
+            transition: all 0.3s ease;
+        }
+        
+        .filter-section:focus-within {
+            transform: translateY(-2px);
+        }
+        
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .table-responsive {
+                display: block;
+                width: 100%;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-gray-900">Admin Data Sekolah</h1>
+            <div class="flex items-center space-x-4">
+                <span class="text-gray-700">Admin</span>
+                <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
+                    <i class="fas fa-user"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white shadow-lg sidebar">
+            <nav class="mt-6">
+                <div class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Menu Utama
+                </div>
+                <a href="#" class="nav-item flex items-center px-6 py-3 text-gray-700 active">
+                    <i class="fas fa-school w-6"></i>
+                    <span class="ml-3">Data Sekolah</span>
+                </a>
+                <a href="/map.html" class="nav-item flex items-center px-6 py-3 text-gray-700">
+                    <i class="fas fa-map-marker-alt w-6"></i>
+                    <span class="ml-3">Peta Sekolah</span>
+                </a>
+                <a href="#" class="nav-item flex items-center px-6 py-3 text-gray-700">
+                    <i class="fas fa-chart-bar w-6"></i>
+                    <span class="ml-3">Statistik</span>
+                </a>
+            </nav>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 p-8 content">
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <!-- Toolbar -->
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-800">Daftar Sekolah</h2>
+                    <div class="flex space-x-4">
+                        <div class="relative">
+                            <input type="text" id="searchInput" placeholder="Cari sekolah..." 
+                                   class="pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                        </div>
+                        <button id="addSchoolBtn" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md flex items-center">
+                            <i class="fas fa-plus mr-2"></i>
+                            Tambah Sekolah
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Filter -->
+                <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label for="provinceFilter" class="block text-sm font-medium text-gray-700 mb-1">Provinsi</label>
+                            <select id="provinceFilter" class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Memuat provinsi...</option>
+                                <!-- Diisi oleh JavaScript -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="districtFilter" class="block text-sm font-medium text-gray-700 mb-1">Kabupaten/Kota</label>
+                            <select id="districtFilter" class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" disabled>
+                                <option value="">Pilih provinsi terlebih dahulu</option>
+                                <!-- Diisi oleh JavaScript -->
+                            </select>
+                        </div>
+                        <div>
+                            <label for="levelFilter" class="block text-sm font-medium text-gray-700 mb-1">Jenjang</label>
+                            <select id="levelFilter" class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Semua Jenjang</option>
+                                <option value="SD">SD</option>
+                                <option value="SMP">SMP</option>
+                                <option value="SMA">SMA</option>
+                                <option value="SMK">SMK</option>
+                            </select>
+                        </div>
+                        <div class="flex items-end">
+                            <button id="resetFilterBtn" class="w-full bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2">
+                                Reset Filter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table -->
+                <div class="overflow-x-auto">
+                    <table id="schoolTable" class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">No</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Sekolah</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">NPSN</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nilai</th>
+                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Provinsi</th>
+                                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sekolahTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Diisi oleh JavaScript -->
+                            <tr>
+                                <td colspan="6" class="px-6 py-4 text-center text-gray-500">Memuat data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                    <div class="text-sm text-gray-700">
+                        Menampilkan <span id="startItem">0</span> sampai <span id="endItem">0</span> dari <span id="totalItems">0</span> data
+                    </div>
+                    <div class="flex space-x-2">
+                        <button id="prevPage" class="px-3 py-1 border rounded-md bg-white text-gray-700 disabled:opacity-50" disabled>
+                            Sebelumnya
+                        </button>
+                        <div id="pageNumbers" class="flex space-x-1">
+                            <!-- Diisi oleh JavaScript -->
+                        </div>
+                        <button id="nextPage" class="px-3 py-1 border rounded-md bg-white text-gray-700 disabled:opacity-50" disabled>
+                            Selanjutnya
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tambah/Edit Sekolah -->
+    <div id="schoolModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 id="modalTitle" class="text-lg font-semibold text-gray-900">Tambah Sekolah Baru</h3>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="schoolForm" class="space-y-4">
+                    <input type="hidden" id="sekolahId">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="col-span-2">
+                            <label for="nama" class="block text-sm font-medium text-gray-700">Nama Sekolah *</label>
+                            <input type="text" id="nama" name="nama" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="npsn" class="block text-sm font-medium text-gray-700">NPSN</label>
+                            <input type="text" id="npsn" name="npsn" maxlength="10"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label for="alamat" class="block text-sm font-medium text-gray-700">Alamat *</label>
+                            <textarea id="alamat" name="alamat" rows="2" required
+                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                        </div>
+                        
+                        <div>
+                            <label for="jenjang" class="block text-sm font-medium text-gray-700">Jenjang *</label>
+                            <select id="jenjang" name="jenjang" required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="SD">SD</option>
+                                <option value="SMP">SMP</option>
+                                <option value="SMA">SMA</option>
+                                <option value="SMK">SMK</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="provinsi" class="block text-sm font-medium text-gray-700">Provinsi *</label>
+                            <select id="provinsi" name="kode_provinsi" required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Pilih Provinsi</option>
+                                <!-- Diisi oleh JavaScript -->
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="kabupaten" class="block text-sm font-medium text-gray-700">Kabupaten/Kota *</label>
+                            <select id="kabupaten" name="kode_kabupaten" required
+                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    disabled>
+                                <option value="">Pilih Kabupaten/Kota</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label for="latitude" class="block text-sm font-medium text-gray-700">Latitude *</label>
+                            <input type="number" step="any" id="latitude" name="latitude" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="longitude" class="block text-sm font-medium text-gray-700">Longitude *</label>
+                            <input type="number" step="any" id="longitude" name="longitude" required
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                        </div>
+                        
+                        <div class="col-span-2">
+                            <label for="nilai" class="block text-sm font-medium text-gray-700">Nilai (0-10)</label>
+                            <div class="flex items-center">
+                                <input type="range" id="nilai" name="nilai" min="0" max="10" step="0.1" value="0"
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <span id="nilaiDisplay" class="ml-2 w-10 text-center">0.0</span>
+                                <div id="colorPreview" class="ml-2 w-6 h-6 rounded border border-gray-300"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-3">
+                        <button type="button" onclick="closeModal()"
+                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Batal
+                        </button>
+                        <button type="submit"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Simpan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Konfirmasi Hapus -->
+    <div id="deleteModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-6 w-full max-w-md">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">Konfirmasi Hapus</h3>
+                <button onclick="closeDeleteModal()" class="text-gray-400 hover:text-gray-500">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <p class="text-gray-700 mb-6">Apakah Anda yakin ingin menghapus sekolah ini? Tindakan ini tidak dapat dibatalkan.</p>
+            <div class="flex justify-end space-x-3">
+                <button onclick="closeDeleteModal()" 
+                        class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                    Batal
+                </button>
+                <button id="confirmDelete" 
+                        class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700">
+                    Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/admin.js"></script>
+    <script>
+        // Initialize the page when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize any necessary components
+            console.log('Admin dashboard initialized');
+        });
+        
+        // Global functions that need to be accessible from HTML
+        window.showAddSchoolModal = function() {
+            openModal();
+        };
+        
+        window.applyFilters = function() {
+            // This will be handled by admin.js
+            console.log('Applying filters...');
+            // The actual implementation is in admin.js
+        };
+        
+        // Make sure these functions are globally available
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.editSchool = editSchool;
+        window.confirmDelete = confirmDelete;
+        window.closeDeleteModal = closeDeleteModal;
+    </script>
+</body>
+</html>
