@@ -1,8 +1,144 @@
 # Data Sekolah Indonesia Web Map
 
-## Cara Grab Data Sekolah dari API (by @wanrabbae)
+## Deskripsi Proyek
 
-Aplikasi ini menggunakan API gratis Data Sekolah Seluruh Indonesia dari:
+Aplikasi Data Sekolah Indonesia adalah sistem informasi geografis berbasis web yang menampilkan dan mengelola data sekolah di seluruh Indonesia. Aplikasi ini memungkinkan pengguna untuk melihat persebaran sekolah pada peta, melakukan pencarian berdasarkan berbagai kriteria, dan mengelola data sekolah melalui panel admin.
+
+## Fitur Utama
+
+### Dashboard Peta (Map View)
+
+![Dashboard Peta](./screen-shot/Screenshot%202025-05-19%20at%204.50.30%20PM.png)
+
+Dashboard peta menampilkan persebaran sekolah di seluruh Indonesia dengan fitur:
+- Visualisasi sekolah dengan marker berwarna berdasarkan nilai sekolah
+- Filter berdasarkan provinsi dan jenjang pendidikan
+- Informasi detail sekolah saat marker diklik
+- Legenda warna untuk memahami klasifikasi nilai sekolah
+- Tampilan responsif untuk berbagai ukuran layar
+
+#### Sistem Warna Marker Berdasarkan Nilai
+
+Setiap sekolah ditampilkan dengan marker berwarna yang menunjukkan nilai kualitasnya (skala 0-10):
+
+- **Hijau** (8-10): Sekolah dengan nilai tinggi/sangat baik
+- **Kuning-Hijau** (6-8): Sekolah dengan nilai baik
+- **Kuning** (5-6): Sekolah dengan nilai sedang
+- **Oranye** (3-5): Sekolah dengan nilai cukup
+- **Merah** (0-3): Sekolah dengan nilai rendah
+
+Sistem warna ini menggunakan gradasi dari merah ke hijau, di mana:
+- Nilai 0 ditampilkan sebagai warna hitam
+- Nilai 1-5 ditampilkan sebagai gradasi dari hitam ke merah
+- Nilai 5-10 ditampilkan sebagai gradasi dari merah ke hijau
+
+### Panel Admin
+
+![Panel Admin](./screen-shot/Screenshot%202025-05-19%20at%204.51.09%20PM.png)
+
+Panel admin menyediakan antarmuka untuk mengelola data sekolah dengan fitur:
+- Tabel data sekolah dengan pagination
+- Pencarian dan filter data sekolah
+- Form untuk menambah dan mengedit data sekolah
+- Validasi input untuk memastikan data yang dimasukkan valid
+- Konfirmasi sebelum menghapus data
+
+## Teknologi yang Digunakan
+
+### Frontend
+- **HTML5, CSS3, JavaScript** - Bahasa dasar pemrograman web
+- **Tailwind CSS** - Framework CSS untuk styling yang modern dan responsif
+- **Leaflet.js** - Library JavaScript untuk menampilkan peta interaktif
+- **Font Awesome** - Icon library untuk antarmuka yang lebih intuitif
+
+### Backend
+- **Node.js** - Runtime JavaScript untuk server
+- **Express.js** - Framework web untuk Node.js
+- **PostgreSQL** - Database relasional untuk menyimpan data sekolah
+- **pg** - PostgreSQL client untuk Node.js
+
+## Struktur Database
+
+Database aplikasi ini menggunakan PostgreSQL dengan tabel utama:
+
+### Tabel `sekolah`
+- `id` - Primary key
+- `nama` - Nama sekolah
+- `npsn` - Nomor Pokok Sekolah Nasional (opsional)
+- `jenjang` - Jenjang pendidikan (SD, SMP, SMA, SMK)
+- `status` - Status sekolah (Negeri/Swasta)
+- `alamat` - Alamat lengkap sekolah
+- `kode_provinsi` - Kode provinsi
+- `kode_kabupaten` - Kode kabupaten/kota
+- `kode_kecamatan` - Kode kecamatan (opsional)
+- `latitude` - Koordinat latitude
+- `longitude` - Koordinat longitude
+- `nilai` - Nilai sekolah (0-10)
+- `created_at` - Timestamp pembuatan data
+- `updated_at` - Timestamp pembaruan data
+
+### Tabel `provinsi`
+- `kode` - Kode provinsi (primary key)
+- `nama` - Nama provinsi
+
+### Tabel `kabupaten`
+- `kode` - Kode kabupaten (primary key)
+- `kode_provinsi` - Foreign key ke tabel provinsi
+- `nama` - Nama kabupaten/kota
+
+## Cara Instalasi
+
+### Prasyarat
+- Node.js (versi 14 atau lebih baru)
+- PostgreSQL (versi 12 atau lebih baru)
+- npm atau yarn
+
+### Langkah Instalasi
+
+1. Clone repositori ini:
+   ```bash
+   git clone https://github.com/yourusername/Data-Sekolah.git
+   cd Data-Sekolah
+   ```
+
+2. Instal dependensi:
+   ```bash
+   npm install
+   ```
+
+3. Buat database PostgreSQL:
+   ```bash
+   createdb data_sekolah
+   ```
+
+4. Buat file `.env` dengan konfigurasi database:
+   ```
+   DB_USER=postgres
+   DB_HOST=localhost
+   DB_NAME=data_sekolah
+   DB_PASSWORD=your_password
+   DB_PORT=5432
+   PORT=3000
+   ```
+
+5. Jalankan migrasi database (jika ada):
+   ```bash
+   npm run migrate
+   ```
+
+6. Jalankan aplikasi:
+   ```bash
+   npm start
+   ```
+
+7. Buka aplikasi di browser:
+   ```
+   http://localhost:3000
+   ```
+
+## API Data Sekolah
+
+Aplikasi ini menggunakan API Data Sekolah Seluruh Indonesia sebagai referensi (by @wanrabbae):
 
 **BASE URL:**
 ```
@@ -47,7 +183,13 @@ Contoh:
 /sekolah?npsn=20106342
 ```
 
-### Contoh response:
+## Kontribusi
+
+Kontribusi untuk pengembangan aplikasi ini sangat diterima. Silakan fork repositori ini, buat branch fitur baru, dan ajukan pull request.
+
+## Lisensi
+
+Proyek ini dilisensikan di bawah [MIT License](LICENSE).
 ```json
 [
   {
