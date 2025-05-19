@@ -8,7 +8,7 @@ Aplikasi Data Sekolah Indonesia adalah sistem informasi geografis berbasis web y
 
 ### Dashboard Peta (Map View)
 
-![Dashboard Peta](./screen-shot/Screenshot%202025-05-19%20at%204.50.30%20PM.png)
+![Dashboard Peta](/screenshots/dashboard.png)
 
 Dashboard peta menampilkan persebaran sekolah di seluruh Indonesia dengan fitur:
 - Visualisasi sekolah dengan marker berwarna berdasarkan nilai sekolah
@@ -34,7 +34,7 @@ Sistem warna ini menggunakan gradasi dari merah ke hijau, di mana:
 
 ### Panel Admin
 
-![Panel Admin](./screen-shot/Screenshot%202025-05-19%20at%204.51.09%20PM.png)
+![Panel Admin](/screenshots/admin.png)
 
 Panel admin menyediakan antarmuka untuk mengelola data sekolah dengan fitur:
 - Tabel data sekolah dengan pagination
