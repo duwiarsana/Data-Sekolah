@@ -142,28 +142,23 @@
 </head>
 <body>
     <div id="app">
-        <div class="sidebar" style="position: fixed; left: 20px; top: 20px; bottom: 20px; display: flex; flex-direction: column; justify-content: space-between;">
-            <div>
-                <div>
-                    <label for="provinsiSelect"><b>Pilih Provinsi</b></label><br>
-                    <select id="provinsiSelect" style="width:100%;padding:5px 4px;margin-top:4px;">
-                        <option value="">-- Pilih Provinsi --</option>
-                    </select>
-                </div>
-                <!-- Bagian Kabupaten/Kota dihapus -->
-                <div style="margin-top:16px;margin-bottom:10px;">
-                    <label style="font-weight:bold;">Pilih Jenjang:</label><br>
-                    <label><input type="checkbox" class="jenjangCheck" value="sd"> SD</label>
-                    <label><input type="checkbox" class="jenjangCheck" value="smp"> SMP</label>
-                    <label><input type="checkbox" class="jenjangCheck" value="sma"> SMA</label>
-                    <label><input type="checkbox" class="jenjangCheck" value="smk"> SMK</label>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
-                    <button id="tampilDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Cari Data</button>
-                    <button id="updateDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Update Data Sekolah</button>
-                </div>
-                <div id="updateStatusSidebar" class="mt-2 text-center"></div>
+        <div class="sidebar" style="position: fixed; left: 10px; top: 10px; width: 260px; background: white; padding: 12px; border-radius: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.1);">
+            <div style="margin-bottom: 10px;">
+                <select id="provinsiSelect" style="width: 100%; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 6px; font-size: 14px; background-color: #f8fafc; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <option value="">-- Pilih Provinsi --</option>
+                </select>
             </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 6px; padding: 6px 10px; background-color: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                <label style="display: flex; align-items: center; font-size: 13px;"><input type="checkbox" class="jenjangCheck" value="sd" style="margin-right: 4px;"> SD</label>
+                <label style="display: flex; align-items: center; font-size: 13px;"><input type="checkbox" class="jenjangCheck" value="smp" style="margin-right: 4px;"> SMP</label>
+                <label style="display: flex; align-items: center; font-size: 13px;"><input type="checkbox" class="jenjangCheck" value="sma" style="margin-right: 4px;"> SMA</label>
+                <label style="display: flex; align-items: center; font-size: 13px;"><input type="checkbox" class="jenjangCheck" value="smk" style="margin-right: 4px;"> SMK</label>
+            </div>
+            
+            <button id="tampilDataBtn" style="width: 100%; padding: 8px; background-color: #1e40af; color: white; border: none; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">Cari Data</button>
+            
+            <div id="updateStatusSidebar" class="mt-2 text-center"></div>
         </div>
         <div class="map-container">
             <div id="map"></div>
@@ -379,23 +374,7 @@
         );
     };
 
-    document.getElementById('updateDataBtn').onclick = async function() {
-  const updateStatus = document.getElementById('updateStatusSidebar');
-  updateStatus.innerHTML = '<span class="text-blue-600 font-medium animate-pulse">Memulai update data...</span>';
-  try {
-    const response = await fetch('/update-data');
-    const result = await response.json();
-    updateStatus.innerHTML = `<div class="bg-green-100 border border-green-400 text-green-700 px-2 py-2 rounded text-sm" role="alert">
-      <strong>Berhasil!</strong>
-      <span class="block">${result.message}</span>
-    </div>`;
-  } catch (error) {
-    updateStatus.innerHTML = `<div class="bg-red-100 border border-red-400 text-red-700 px-2 py-2 rounded text-sm" role="alert">
-      <strong>Gagal!</strong>
-      <span class="block">Gagal memulai update: ${error.message}</span>
-    </div>`;
-  }
-};
+    // Event listener untuk tombol Update Data Sekolah sudah dihapus karena tombol tidak lagi ada di UI
 
     // Modal logic
     function showSchoolDetailModal(school) {
