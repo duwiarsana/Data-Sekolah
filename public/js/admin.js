@@ -6,12 +6,16 @@ let filteredSchools = [];
 window.provinsiData = [];
 window.selectedProvinceCode = null;
 
+// Variabel untuk peta
+let schoolMap = null;
+let schoolMarker = null;
+const defaultMapCenter = [-2.5489, 118.0149]; // Koordinat default (tengah Indonesia)
+
 // DOM Elements
 const schoolTable = document.getElementById('schoolTable');
 const pagination = document.getElementById('pagination');
 const searchInput = document.getElementById('searchInput');
 const provinceFilter = document.getElementById('provinceFilter');
-const districtFilter = document.getElementById('districtFilter');
 const levelFilter = document.getElementById('levelFilter');
 
 // Check if we're on the admin page
@@ -19,24 +23,40 @@ const isAdminPage = window.location.pathname.includes('admin');
 
 // Initialize the page
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Halaman admin dimuat');
+    
     try {
-        // Setup event listeners first
+        console.log('Menyiapkan event listeners...');
         setupEventListeners();
         
-        // Load provinces for filter and form
-        await loadProvinces();
+        try {
+            console.log('Memuat data provinsi...');
+            await loadProvinces();
+            console.log('Data provinsi berhasil dimuat');
+        } catch (provinceError) {
+            console.error('Gagal memuat provinsi:', provinceError);
+            showAlert('Gagal memuat data provinsi. Beberapa fitur mungkin tidak berfungsi dengan baik.', 'error');
+        }
         
-        // Load schools data
-        await loadSchools();
-        
-        // Render the table with initial data
-        renderSchoolTable();
-        
-        // Initialize pagination
-        renderPagination();
+        try {
+            console.log('Memuat data sekolah...');
+            await loadSchools();
+            console.log('Data sekolah berhasil dimuat');
+            
+            // Render the table with initial data
+            console.log('Merender tabel sekolah...');
+            renderSchoolTable();
+            
+            // Initialize pagination
+            console.log('Menyiapkan pagination...');
+            renderPagination();
+        } catch (schoolsError) {
+            console.error('Gagal memuat data sekolah:', schoolsError);
+            showAlert('Gagal memuat data sekolah. Silakan refresh halaman.', 'error');
+        }
     } catch (error) {
-        console.error('Error initializing page:', error);
-        showAlert('Gagal memuat data. Silakan refresh halaman.', 'error');
+        console.error('Error inisialisasi halaman:', error);
+        showAlert('Terjadi kesalahan saat memuat halaman. Silakan refresh halaman.', 'error');
     }
 });
 
@@ -78,21 +98,7 @@ function setupEventListeners() {
     
     // Province filter
     if (provinceFilter) {
-        provinceFilter.addEventListener('change', async function() {
-            const provinceCode = this.value;
-            window.selectedProvinceCode = provinceCode;
-            
-            // Reset district filter
-            if (districtFilter) {
-                districtFilter.innerHTML = '<option value="">Semua Kabupaten/Kota</option>';
-                districtFilter.disabled = !provinceCode;
-            }
-            
-            // Load districts if province is selected
-            if (provinceCode) {
-                await loadDistricts(provinceCode);
-            }
-            
+        provinceFilter.addEventListener('change', function() {
             // Filter schools
             currentPage = 1;
             filterSchools();
@@ -101,15 +107,8 @@ function setupEventListeners() {
         });
     }
     
-    // District filter
-    if (districtFilter) {
-        districtFilter.addEventListener('change', function() {
-            currentPage = 1;
-            filterSchools();
-            renderSchoolTable();
-            renderPagination();
-        });
-    }
+    // District filter sudah dihapus
+    // Kode untuk district filter dihapus karena fitur kabupaten/kota sudah tidak digunakan
     
     // Level filter
     if (levelFilter) {
@@ -132,120 +131,95 @@ function setupEventListeners() {
 
 // Load provinces for filter and form
 async function loadProvinces() {
+    console.log('Memulai pemuatan data provinsi...');
     try {
-        const response = await fetch('/api/provinsi');
+        console.log('Mengambil data dari /api/provinces...');
+        const response = await fetch('/api/provinces');
+        console.log('Response status:', response.status);
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
         }
         
         const provinces = await response.json();
-        window.provinsiData = provinces;
+        console.log('Data provinsi mentah:', provinces);
+        
+        if (!provinces) {
+            throw new Error('Tidak ada data yang diterima dari server');
+        }
+        
+        // Pastikan provinces adalah array
+        const provincesArray = Array.isArray(provinces) ? provinces : [];
+        console.log('Data provinsi yang akan diproses:', provincesArray);
+        
+        if (!Array.isArray(provincesArray)) {
+            throw new Error('Format data provinsi tidak valid');
+        }
+        
+        if (provincesArray.length === 0) {
+            console.warn('Data provinsi kosong');
+            showAlert('Data provinsi kosong. Pastikan database sudah terisi dengan benar.', 'warning');
+            return;
+        }
+        
+        window.provinsiData = provincesArray;
         
         // Sort provinces alphabetically
-        provinces.sort((a, b) => a.nama.localeCompare(b.nama));
+        provincesArray.sort((a, b) => {
+            const nameA = (a.nama || '').toLowerCase();
+            const nameB = (b.nama || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        });
         
         // Add options to filter dropdown
         if (provinceFilter) {
+            console.log('Menambahkan opsi ke filter provinsi...');
             // Reset and add default option
             provinceFilter.innerHTML = '<option value="">Semua Provinsi</option>';
             
             // Add options to select
-            provinces.forEach(province => {
-                const option = document.createElement('option');
-                option.value = province.kode;
-                option.textContent = province.nama;
-                provinceFilter.appendChild(option);
+            provincesArray.forEach(province => {
+                if (province && province.kode && province.nama) {
+                    const option = document.createElement('option');
+                    option.value = province.kode;
+                    option.textContent = province.nama;
+                    provinceFilter.appendChild(option);
+                } else {
+                    console.warn('Data provinsi tidak valid:', province);
+                }
             });
+            console.log('Filter provinsi selesai diisi');
+        } else {
+            console.warn('Element provinceFilter tidak ditemukan di DOM');
         }
         
         // Add options to form dropdown
         const formProvinceSelect = document.getElementById('provinsi');
         if (formProvinceSelect) {
+            console.log('Menambahkan opsi ke form provinsi...');
             // Reset and add default option
             formProvinceSelect.innerHTML = '<option value="">Pilih Provinsi</option>';
             
             // Add options to select
-            provinces.forEach(province => {
-                const option = document.createElement('option');
-                option.value = province.kode;
-                option.textContent = province.nama;
-                formProvinceSelect.appendChild(option);
-            });
-            
-            // Add change event listener to load districts when province changes
-            formProvinceSelect.addEventListener('change', async function() {
-                const provinceCode = this.value;
-                if (provinceCode) {
-                    const kabupatenSelect = document.getElementById('kabupaten');
-                    if (kabupatenSelect) {
-                        kabupatenSelect.innerHTML = '<option value="">Memuat data...</option>';
-                        kabupatenSelect.disabled = true;
-                        
-                        try {
-                            const response = await fetch(`/api/kabupaten?provinsi=${provinceCode}`);
-                            if (!response.ok) {
-                                throw new Error(`HTTP error! status: ${response.status}`);
-                            }
-                            
-                            const districts = await response.json();
-                            
-                            // Sort districts alphabetically
-                            districts.sort((a, b) => a.nama.localeCompare(b.nama));
-                            
-                            // Reset and add options
-                            kabupatenSelect.innerHTML = '<option value="">Pilih Kabupaten/Kota</option>';
-                            
-                            districts.forEach(district => {
-                                const option = document.createElement('option');
-                                option.value = district.kode;
-                                option.textContent = district.nama;
-                                kabupatenSelect.appendChild(option);
-                            });
-                            
-                            kabupatenSelect.disabled = false;
-                        } catch (error) {
-                            console.error('Error loading districts:', error);
-                            kabupatenSelect.innerHTML = '<option value="">Error loading data</option>';
-                        }
-                    }
+            provincesArray.forEach(province => {
+                if (province && province.kode && province.nama) {
+                    const option = document.createElement('option');
+                    option.value = province.kode;
+                    option.textContent = province.nama;
+                    formProvinceSelect.appendChild(option);
                 }
             });
+            console.log('Form provinsi selesai diisi');
+        } else {
+            console.warn('Element form provinsi tidak ditemukan di DOM');
         }
+        
+        console.log('Pemuatan data provinsi selesai');
     } catch (error) {
         console.error('Error loading provinces:', error);
-        showAlert('Gagal memuat data provinsi', 'error');
-    }
-}
-
-// Load districts for selected province
-async function loadDistricts(provinceCode) {
-    try {
-        const response = await fetch(`/api/kabupaten?provinsi=${provinceCode}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const districts = await response.json();
-        
-        if (districtFilter) {
-            // Sort districts alphabetically
-            districts.sort((a, b) => a.nama.localeCompare(b.nama));
-            
-            // Reset and add options
-            districtFilter.innerHTML = '<option value="">Semua Kabupaten/Kota</option>';
-            
-            districts.forEach(district => {
-                const option = document.createElement('option');
-                option.value = district.kode;
-                option.textContent = district.nama;
-                districtFilter.appendChild(option);
-            });
-            
-            districtFilter.disabled = false;
-        }
-    } catch (error) {
-        console.error('Error loading districts:', error);
-        showAlert('Gagal memuat data kabupaten/kota', 'error');
+        showAlert('Gagal memuat data provinsi. Silakan refresh halaman. ' + error.message, 'error');
     }
 }
 
@@ -272,29 +246,26 @@ async function loadSchools() {
 function filterSchools() {
     const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
     const provinceCode = provinceFilter ? provinceFilter.value : '';
-    const districtCode = districtFilter ? districtFilter.value : '';
     const level = levelFilter ? levelFilter.value : '';
     
     filteredSchools = schools.filter(school => {
-        // Search term filter
+        // Check search term
         const matchesSearch = !searchTerm || 
-            (school.nama && school.nama.toLowerCase().includes(searchTerm)) || 
-            (school.alamat && school.alamat.toLowerCase().includes(searchTerm)) ||
+            (school.nama_sekolah && school.nama_sekolah.toLowerCase().includes(searchTerm)) ||
             (school.npsn && school.npsn.toLowerCase().includes(searchTerm));
         
-        // Province filter
+        // Check province
         const matchesProvince = !provinceCode || school.kode_provinsi === provinceCode;
         
-        // District filter
-        const matchesDistrict = !districtCode || school.kode_kabupaten === districtCode;
+        // Check level
+        const matchesLevel = !level || school.jenjang === level;
         
-        // Level filter
-        const matchesLevel = !level || (school.jenjang && school.jenjang.toLowerCase() === level.toLowerCase());
-        
-        return matchesSearch && matchesProvince && matchesDistrict && matchesLevel;
+        return matchesSearch && matchesProvince && matchesLevel;
     });
     
-    console.log(`Filtered to ${filteredSchools.length} schools`);
+    // Update pagination
+    currentPage = 1;
+    updatePaginationInfo(0, 0, filteredSchools.length);
 }
 
 // Render the school table with current data
@@ -329,15 +300,14 @@ function renderSchoolTable() {
     if (paginatedSchools.length === 0) {
         const emptyRow = document.createElement('tr');
         emptyRow.innerHTML = `
-            <td colspan="6" class="px-6 py-4 text-center text-gray-500">
+            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
                 Tidak ada data sekolah yang sesuai dengan filter
             </td>
         `;
         tableBody.appendChild(emptyRow);
         return;
     }
-    
-    // Create rows for each school
+        // Create rows for each school
     paginatedSchools.forEach((school, index) => {
         const row = document.createElement('tr');
         row.className = index % 2 === 0 ? 'bg-white' : 'bg-gray-50';
@@ -371,7 +341,6 @@ function renderSchoolTable() {
         tableBody.appendChild(row);
     });
 }
-
 // Helper function for delayed execution (debounce)
 function debounce(func, wait) {
     let timeout;
@@ -471,35 +440,84 @@ function getRatingColor(rating) {
     return 'bg-red-100 text-red-800';
 }
 
+// Inisialisasi peta untuk form sekolah
+function initializeMap(lat, lng) {
+    // Hapus peta sebelumnya jika ada
+    if (schoolMap) {
+        schoolMap.remove();
+        schoolMap = null;
+        schoolMarker = null;
+    }
+    
+    // Gunakan koordinat yang diberikan atau default ke tengah Indonesia
+    const mapCenter = [lat || defaultMapCenter[0], lng || defaultMapCenter[1]];
+    
+    // Inisialisasi peta
+    schoolMap = L.map('mapContainer').setView(mapCenter, 5);
+    
+    // Tambahkan layer peta
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(schoolMap);
+    
+    // Tambahkan marker
+    schoolMarker = L.marker(mapCenter, {
+        draggable: true
+    }).addTo(schoolMap);
+    
+    // Update koordinat saat marker dipindahkan
+    schoolMarker.on('dragend', function(event) {
+        const marker = event.target;
+        const position = marker.getLatLng();
+        document.getElementById('latitude').value = position.lat.toFixed(6);
+        document.getElementById('longitude').value = position.lng.toFixed(6);
+    });
+    
+    // Update koordinat saat peta diklik
+    schoolMap.on('click', function(event) {
+        const position = event.latlng;
+        document.getElementById('latitude').value = position.lat.toFixed(6);
+        document.getElementById('longitude').value = position.lng.toFixed(6);
+        
+        // Pindahkan marker
+        schoolMarker.setLatLng(position);
+    });
+    
+    // Perbaiki tampilan peta setelah modal ditampilkan
+    setTimeout(() => {
+        schoolMap.invalidateSize();
+    }, 100);
+}
+
 // Edit school function - loads school data and opens the edit form
 async function editSchool(schoolId) {
     try {
         // Show loading state
-        document.getElementById('modalTitle').textContent = 'Memuat Data Sekolah...';
+        const modal = document.getElementById('schoolModal');
+        if (modal) {
+            // Tampilkan modal
+            modal.style.display = 'flex';
+        }
         
-        // Open the modal first to show loading state
-        openModal();
-        
-        // Fetch school data from API
+        // Fetch school data
         const response = await fetch(`/api/sekolah/${schoolId}`);
-        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error('Gagal memuat data sekolah');
         }
         
         const school = await response.json();
-        console.log('School data loaded:', school);
         
-        // Update form title
-        document.getElementById('modalTitle').textContent = 'Edit Data Sekolah';
+        // Reset form
+        const form = document.getElementById('schoolForm');
+        form.reset();
         
-        // Set form fields with school data
+        // Set form values
         document.getElementById('sekolahId').value = school.id;
         document.getElementById('nama').value = school.nama || '';
         document.getElementById('npsn').value = school.npsn || '';
         document.getElementById('alamat').value = school.alamat || '';
         
-        // Set jenjang (school level)
+        // Set jenjang (education level)
         const jenjangSelect = document.getElementById('jenjang');
         if (jenjangSelect) {
             const jenjangValue = school.jenjang || '';
@@ -521,30 +539,18 @@ async function editSchool(schoolId) {
                     break;
                 }
             }
-            
-            // Trigger province change to load districts
-            if (provinsiValue) {
-                await loadDistricts(provinsiValue);
-                
-                // Set kabupaten (district) after districts are loaded
-                const kabupatenSelect = document.getElementById('kabupaten');
-                if (kabupatenSelect) {
-                    const kabupatenValue = school.kode_kabupaten || '';
-                    setTimeout(() => {
-                        for (let i = 0; i < kabupatenSelect.options.length; i++) {
-                            if (kabupatenSelect.options[i].value === kabupatenValue) {
-                                kabupatenSelect.selectedIndex = i;
-                                break;
-                            }
-                        }
-                    }, 500); // Small delay to ensure districts are loaded
-                }
-            }
         }
         
         // Set coordinates
-        document.getElementById('latitude').value = school.latitude || '';
-        document.getElementById('longitude').value = school.longitude || '';
+        const latitude = school.latitude || defaultMapCenter[0];
+        const longitude = school.longitude || defaultMapCenter[1];
+        document.getElementById('latitude').value = latitude;
+        document.getElementById('longitude').value = longitude;
+        
+        // Inisialisasi peta dengan koordinat sekolah
+        setTimeout(() => {
+            initializeMap(latitude, longitude);
+        }, 300);
         
         // Set nilai (value)
         const nilaiInput = document.getElementById('nilai');
@@ -560,6 +566,9 @@ async function editSchool(schoolId) {
             const color = getColorByNilai(nilai);
             colorPreview.style.backgroundColor = color;
         }
+        
+        // Update modal title
+        document.getElementById('modalTitle').textContent = 'Edit Data Sekolah';
         
     } catch (error) {
         console.error('Error loading school data:', error);
@@ -615,7 +624,6 @@ async function saveSchool() {
         const alamat = document.getElementById('alamat').value;
         const jenjang = document.getElementById('jenjang').value;
         const kode_provinsi = document.getElementById('provinsi').value;
-        const kode_kabupaten = document.getElementById('kabupaten').value;
         const latitude = document.getElementById('latitude').value;
         const longitude = document.getElementById('longitude').value;
         const nilai = document.getElementById('nilai').value;
@@ -633,7 +641,6 @@ async function saveSchool() {
             alamat: alamat,
             jenjang: jenjang,
             kode_provinsi: kode_provinsi,
-            kode_kabupaten: kode_kabupaten || null,
             latitude: latitude || null,
             longitude: longitude || null,
             nilai: nilai || 5.0,
@@ -692,19 +699,30 @@ function closeModal() {
     const modal = document.getElementById('schoolModal');
     if (modal) {
         modal.style.display = 'none';
-                
+        
         // Reset form
         const form = document.getElementById('schoolForm');
         if (form) {
             form.reset();
-            document.getElementById('sekolahId').value = '';
-            document.getElementById('modalTitle').textContent = 'Tambah Sekolah Baru';
+            form.removeAttribute('data-edit-mode');
+        }
+        
+        // Hide validation errors
+        const errorElements = document.querySelectorAll('.text-red-500');
+        errorElements.forEach(el => el.textContent = '');
+        
+        // Destroy map to prevent memory leaks
+        if (schoolMap) {
+            schoolMap.remove();
+            schoolMap = null;
+            schoolMarker = null;
         }
     }
 }
 
 // Render pagination
 function renderPagination() {
+    // ...
     // Skip pagination rendering if we're not on the admin page
     if (!isAdminPage) {
         return;

@@ -150,12 +150,7 @@
                         <option value="">-- Pilih Provinsi --</option>
                     </select>
                 </div>
-                <div style="margin-top:10px;">
-                    <label for="kabupatenSelect"><b>Pilih Kabupaten/Kota</b></label><br>
-                    <select id="kabupatenSelect" style="width:100%;padding:5px 4px;margin-top:4px;" disabled>
-                        <option value="">-- Pilih Kabupaten/Kota --</option>
-                    </select>
-                </div>
+                <!-- Bagian Kabupaten/Kota dihapus -->
                 <div style="margin-top:16px;margin-bottom:10px;">
                     <label style="font-weight:bold;">Pilih Jenjang:</label><br>
                     <label><input type="checkbox" class="jenjangCheck" value="sd"> SD</label>
@@ -164,7 +159,7 @@
                     <label><input type="checkbox" class="jenjangCheck" value="smk"> SMK</label>
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 24px;">
-                    <button id="tampilDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Tampil Data</button>
+                    <button id="tampilDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Cari Data</button>
                     <button id="updateDataBtn" class="w-full py-3 bg-blue-900 text-white rounded font-bold text-lg hover:bg-blue-700 transition duration-300">Update Data Sekolah</button>
                 </div>
                 <div id="updateStatusSidebar" class="mt-2 text-center"></div>
@@ -210,23 +205,102 @@
     map.setMinZoom(5); // Zoom minimum Indonesia
     map.setMaxZoom(18); // Zoom maksimum detail
 
+    // Fungsi untuk mendapatkan warna berdasarkan nilai (0-10)
+    function getColorByNilai(nilai) {
+        // Pastikan nilai antara 0-10
+        const clampedNilai = Math.min(10, Math.max(0, parseFloat(nilai) || 0));
+        
+        // Hitung komponen warna (RGB)
+        // Nilai 0: Hitam (0,0,0)
+        // Nilai 5: Merah (255,0,0)
+        // Nilai 10: Hijau (0,255,0)
+        let r, g, b;
+        
+        if (clampedNilai <= 5) {
+            // Dari hitam ke merah
+            const factor = clampedNilai / 5;
+            r = Math.round(255 * factor);
+            g = 0;
+            b = 0;
+        } else {
+            // Dari merah ke hijau
+            const factor = (clampedNilai - 5) / 5;
+            r = Math.round(255 * (1 - factor));
+            g = Math.round(255 * factor);
+            b = 0;
+        }
+        
+        // Konversi ke hex
+        return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+    }
+    
+    // Fungsi untuk membuat custom marker dengan warna tertentu
+    function createColoredMarker(latlng, color) {
+        return L.circleMarker(latlng, {
+            radius: 8,
+            fillColor: color,
+            color: '#000',
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+        });
+    }
+    
     // Marker cluster group
     let markerCluster = L.markerClusterGroup();
     let schoolMarkers = [];
     map.addLayer(markerCluster);
 
-    async function fetchAndShowSchools(filterProvinsi = '', filterKabupaten = '', jenjangArr = null) {
-        // Tambahkan log untuk debugging
+    async function fetchAndShowSchools(filterProvinsi = '', jenjangArr = null) {
         console.log('Fetching schools from database with params:', {
             filterProvinsi,
-            filterKabupaten,
             jenjangArr
         });
         
         try {
+            // Buat parameter URL
+            const params = new URLSearchParams();
+            
+            // Tambahkan parameter all=true untuk mendapatkan semua data tanpa pagination
+            params.append('all', 'true');
+            
+            // Tambahkan parameter jenjang jika ada
+            if (jenjangArr && jenjangArr.length > 0) {
+                params.append('jenjang', jenjangArr.join(','));
+            }
+            
+            // Tambahkan parameter provinsi jika ada
+            if (filterProvinsi) {
+                params.append('provinsi', filterProvinsi);
+            }
+            
+            // Parameter kabupaten sudah dihapus
+            
+            // Bangun URL dengan parameter
+            const url = `/api/sekolah?${params.toString()}`;
+            console.log('Request URL:', url);
+            
             // Fetch data dari database
-            const response = await fetch(`/api/sekolah?jenjang=${jenjangArr?.join(',')}&provinsi=${filterProvinsi}&kabupaten=${filterKabupaten}`);
-            const data = await response.json();
+            const response = await fetch(url);
+            
+            // Periksa status response
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+            }
+            
+            const responseData = await response.json();
+            
+            // Check if the response has a data property (API returns {data: [...], pagination: {...}})
+            const data = responseData.data || responseData;
+            
+            // Pastikan data adalah array
+            if (!Array.isArray(data)) {
+                console.error('Response format:', responseData);
+                throw new Error('Data yang diterima bukan array');
+            }
+            
+            console.log('Received data:', data);
             
             // Clear marker sebelumnya
             markerCluster.clearLayers();
@@ -234,50 +308,73 @@
             
             // Tambahkan marker untuk setiap sekolah
             data.forEach((school) => {
+                if (!school || typeof school !== 'object') return;
+                
                 const lat = parseFloat(school.latitude);
                 const lng = parseFloat(school.longitude);
+                
                 if (!isNaN(lat) && !isNaN(lng)) {
-                    const marker = L.marker([lat, lng])
-                        .bindPopup(`<b>${school.nama}</b><br>${school.alamat}`);
+                    // Dapatkan warna berdasarkan nilai sekolah
+                    const color = getColorByNilai(school.nilai || 0);
+                    
+                    // Buat marker dengan warna yang sesuai
+                    const marker = createColoredMarker([lat, lng], color)
+                        .bindPopup(`
+                            <b>${school.nama || 'Nama tidak tersedia'}</b><br>
+                            ${school.alamat || ''}<br>
+                            <b>Nilai:</b> ${school.nilai || 'Tidak ada'}
+                        `);
+                    
                     markerCluster.addLayer(marker);
                     schoolMarkers.push(marker);
                 }
             });
             
             // Perbarui jumlah sekolah yang ditampilkan
-            document.getElementById('school-list').innerHTML = '<div style="text-align:center;padding:20px;">Menampilkan ' + data.length + ' sekolah dari database</div>';
+            const schoolListElement = document.getElementById('school-list');
+            if (schoolListElement) {
+                schoolListElement.innerHTML = `
+                    <div style="text-align:center;padding:20px;">
+                        Menampilkan ${data.length} sekolah dari database
+                    </div>`;
+            }
             
         } catch (err) {
             console.error('Error fetching data from database:', err);
-            alert('Gagal mengambil data sekolah dari database.');
-        }    
+            
+            // Tampilkan pesan error yang lebih informatif
+            const errorMessage = err.message || 'Tidak dapat terhubung ke server';
+            console.error('Error details:', errorMessage);
+            
+            // Update UI dengan pesan error
+            const schoolListElement = document.getElementById('school-list');
+            if (schoolListElement) {
+                schoolListElement.innerHTML = `
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
+                        <strong class="font-bold">Gagal memuat data!</strong>
+                        <span class="block sm:inline"> ${errorMessage}</span>
+                    </div>`;
+            }
+            
+            // Tampilkan alert hanya di development
+            if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                alert(`Error: ${errorMessage}\n\nLihat console untuk detail lebih lanjut.`);
+            }
+        }
     }
 
     // Dropdown provinsi event
     document.getElementById('provinsiSelect').addEventListener('change', function(e) {
-        // Saat provinsi berubah, enable dropdown kabupaten jika ada value
-        const kabupatenSelect = document.getElementById('kabupatenSelect');
-        if (this.value) {
-            kabupatenSelect.disabled = false;
-        } else {
-            kabupatenSelect.value = '';
-            kabupatenSelect.disabled = true;
-        }
-    });
-
-    // Dropdown kabupaten event
-    document.getElementById('kabupatenSelect').addEventListener('change', function(e) {
-        // Tidak fetch data, hanya update value
+        // Tidak perlu melakukan apa-apa saat provinsi berubah karena kabupaten sudah dihapus
+        console.log('Provinsi dipilih:', this.value);
     });
 
     // Tombol tampil data
     document.getElementById('tampilDataBtn').onclick = async function() {
         const provinsiSelect = document.getElementById('provinsiSelect');
-        const kabupatenSelect = document.getElementById('kabupatenSelect');
         const jenjangArr = Array.from(document.querySelectorAll('.jenjangCheck:checked')).map((el) => el.value);
         await fetchAndShowSchools(
             provinsiSelect.value,      // Kode Provinsi
-            kabupatenSelect.value,     // Kode Kabupaten (bisa kosong)
             jenjangArr.length > 0 ? jenjangArr : ['sd','smp','sma','smk']  // Array Jenjang
         );
     };
